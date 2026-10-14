@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#e8590c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HAPA">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<title>HAPA – Discover what's happening near you</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#faf6f0;--card:#fff;--tx:#1f2a24;--mu:#6b756e;--ac:#e8590c;--ac2:#0b7a5a;--bd:#e8e1d6}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14181a;--card:#1d2326;--tx:#f1efe9;--mu:#9aa5a0;--bd:#2c3438;--ac:#ff7a33;--ac2:#3ccf9f}}
+:root[data-theme="dark"]{--bg:#14181a;--card:#1d2326;--tx:#f1efe9;--mu:#9aa5a0;--bd:#2c3438;--ac:#ff7a33;--ac2:#3ccf9f}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:76px}
+.wrap{max-width:520px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0}h2{font-size:17px;margin:22px 0 10px}
+.mu{color:var(--mu);font-size:13px}
+input,select{width:100%;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0}
+.chip{flex:none;padding:8px 14px;border-radius:99px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit;cursor:pointer}
+.chip.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.btn{border:0;border-radius:12px;padding:10px 14px;background:var(--ac);color:#fff;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+.btn.alt{background:var(--card);color:var(--tx);border:1px solid var(--bd)}.btn.g{background:var(--ac2)}.btn:disabled{opacity:.6}
+.tag{font-size:12px;background:#e8590c22;color:var(--ac);padding:2px 8px;border-radius:99px;font-weight:600}
+.open{color:var(--ac2);font-weight:600}
+.deal{border-left:5px solid var(--ac)}
+.big{font-size:26px;font-weight:800}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--bd);display:flex;padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:12px 0;font:inherit;font-size:12px;cursor:pointer}
+nav button.on{color:var(--ac);font-weight:700}nav span{display:block;font-size:20px}
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:flex-end;z-index:9}
+.modal.show{display:flex}.sheet{background:var(--bg);width:100%;max-width:520px;margin:0 auto;border-radius:20px 20px 0 0;padding:18px;max-height:85%;overflow:auto}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px}
+.map{background:var(--card);border:1px solid var(--bd);border-radius:16px;overflow:hidden}
+.hide{display:none}
+</style></head><body>
+<div class="wrap" id="app"></div>
+<div class="modal" id="m"><div class="sheet" id="sheet"></div></div>
+<nav id="nav"></nav>
+
+<!-- config.js is generated at build time (contains public anon key & url) -->
+<script src="/config.js"></script>
+
+<script>
+const CATS=[["all","✨","All"],["food","🍔","Food"],["beauty","💆","Beauty"],["stay","🏨","Stay"],["shop","🛍","Shopping"],["auto","🚗","Auto"],["fun","🎉","Events"]];
+const B=[
+{id:0,real:1,n:"Sarange Africanas Spa",c:"beauty",r:5.0,rc:4,d:0.2,o:true,x:178,y:100,ph:"254708861713",lat:-0.5003937,lng:36.3253977,hrs:"Mon–Tue 8:30–19:00 · Wed–Sat 8:00–19:00 · Sun 8:30–19:00",svc:["Spa treatments – ask for prices","Nail services – ask for prices","Beauty services – ask for prices"]},];
+const eat=()=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Nairobi',hour:'numeric',minute:'numeric',hour12:false}).formatToParts(new Date());return +p[0].value+ +p[2].value/60};const openNow=(a,b)=>eat()>=a&&eat()<b;B[0].o=openNow(8,19);
+const now=()=>Date.now(),H=36e5;
+let D=[{id:-1,b:0,t:"Facial",p:2000,pc:20,left:10,end:now()+2*H},{id:-4,b:0,t:"Massage",p:3500,pc:30,left:5,end:now()+1.5*H}];
+let S={tab:"home",cat:"all",q:"",claimed:{},stats:{views:0,wa:0,dir:0,claims:0,calls:0},my:null,dark:null};
+const bz=id=>B.find(b=>b.id==id),CI=c=>CATS.find(x=>x[0]==c)[1];
+const price=d=>Math.round(d.p*(100-d.pc)/100).toLocaleString();
+const left=ms=>{const m=Math.max(0,Math.round((ms-now())/6e4));return m>=60?Math.floor(m/60)+"h "+m%60+"m":m+"m"};
+function list(){return B.filter(b=>(S.cat=="all"||b.c==S.cat)&&(!S.q||(b.n+b.svc.join()+b.c).toLowerCase().includes(S.q.toLowerCase()))).sort((a,b)=>a.d-b.d)}
+function dealCard(d){const b=bz(d.b);return `<div class="card deal"><div class="row"><b>${d.pc}% OFF ${d.t}</b><span class="tag">⏰ ${left(d.end)}</span></div>
+<div class="mu">📍 ${b.n} · ⭐ ${b.r} · ${b.d} km</div>
+<div class="row" style="margin-top:8px"><div><s class="mu">KSh ${d.p.toLocaleString()}</s> <b>KSh ${price(d)}</b><div class="mu">Only ${d.left} left</div></div>
+<button class="btn ${S.claimed[d.id]?'g':''}" onclick="claim(${d.id})" ${S.claimed[d.id]||!d.left?'disabled':''}>${S.claimed[d.id]?'✓ Claimed':'GET DEAL'}</button></div></div>`}
+function bizCard(b){return `<div class="card" onclick="openB(${b.id})" style="cursor:pointer"><div class="row"><b>${CI(b.c)} ${b.n} ${b.real?'<span class="tag" style="background:#0b7a5a22;color:var(--ac2)">Real</span>':'<span class="tag" style="background:#8883;color:var(--mu)">Sample</span>'}</b><span class="${b.o?'open':'mu'}">${b.o?'🟢 Open':'Closed'}</span></div><div class="mu">⭐ ${b.r} · 📍 ${b.d} km · ${CATS.find(x=>x[0]==b.c)[2]}</div></div>`}
+function home(){const l=list(),ds=D.filter(d=>d.end>now()&&(S.cat=="all"||bz(d.b).c==S.cat)).sort((a,b)=>a.end-b.end);
+return `<div class="row"><div><div class="mu">📍 You're in Gilgil</div><h1>What's happening near you?</h1></div><button class="chip" onclick="theme()">🌓</button></div>
+<input id="q" placeholder="🔎 Search businesses, services or deals..." value="${S.q}" oninput="S.q=this.value;sync()">
+<div class="chips">${CATS.map(c=>`<button class="chip ${S.cat==c[0]?'on':''}" onclick="S.cat='${c[0]}';render()">${c[1]} ${c[2]}</button>`).join("")}</div>
+<div class="card mu" style="font-size:12px">ℹ️ Example listing: Sarange Africanas Spa details come from its Google listing. The offers shown are examples.</div><div class="grid"><button class="btn" onclick="surprise()">🎲 Surprise me</button><button class="btn alt" onclick="gps()">📍 Use my location</button></div>
+<h2>🔥 Deals near you</h2><div id="ds">${ds.map(dealCard).join("")||'<div class="mu">No deals in this category right now.</div>'}</div>
+<h2>🟢 Open now</h2><div id="bl">${l.filter(b=>b.o).map(bizCard).join("")||'<div class="mu">Nothing found.</div>'}</div>
+${l.some(b=>!b.o)?`<h2>Closed</h2>${l.filter(b=>!b.o).map(bizCard).join("")}`:""}`}
+function sync(){const l=list();document.getElementById("bl").innerHTML=l.filter(b=>b.o).map(bizCard).join("")||'<div class="mu">Nothing found.</div>'}
+function map(){return `<h1>Map</h1><div class="mu">Tap a pin to see the business.</div><div class="chips">${CATS.map(c=>`<button class="chip ${S.cat==c[0]?'on':''}" onclick="S.cat='${c[0]}';render()">${c[1]}</button>`).join("")}</div>
+<div class="map"><svg viewBox="0 0 360 220" width="100%"><rect width="360" height="220" fill="var(--bg)"/><path d="M0 110 Q120 80 200 120 T360 100" stroke="var(--bd)" stroke-width="10" fill="none"/><path d="M180 0 L170 220" stroke="var(--bd)" stroke-width="7" fill="none"/>
+<circle cx="180" cy="110" r="9" fill="#2563eb" opacity=".25"/><circle cx="180" cy="110" r="5" fill="#2563eb"/><text x="190" y="128" font-size="10" fill="var(--mu)">You</text>
+${list().map(b=>`<g onclick="openB(${b.id})" style="cursor:pointer"><circle cx="${b.x}" cy="${b.y}" r="14" fill="var(--card)" stroke="${D.some(d=>d.b==b.id&&d.end>now())?'var(--ac)':'var(--bd)'}" stroke-width="2"/><text x="${b.x}" y="${b.y+5}" font-size="14" text-anchor="middle">${CI(b.c)}</text></g>`).join("")}</svg></div>
+<div class="mu" style="margin-top:8px">Orange ring = has a live deal. Prototype map – the real app will use live GPS and Google/OpenStreetMap tiles.</div>`}
+/* ===== ONLINE BACKEND (Supabase) – config.js is generated at build time ===== */
+const SB_URL = (window.__HAPA && window.__HAPA.SB_URL) || "PASTE_SUPABASE_URL", SB_KEY = (window.__HAPA && window.__HAPA.SB_KEY) || "PASTE_SUPABASE_ANON_KEY";
+const PAY_NUM="0708294404",FEE=50;let PAY=null;
+const ON=!SB_URL.startsWith("PASTE");let U=null,MY=null,PL=null;
+const E=t=>String(t==null?"":t).replace(/[&<>"']/g,c=>(({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]||c));
+const val=i=>document.getElementById(i).value;
+async function api(p,o={}){const r=await fetch(SB_URL+p,{...o,headers:{apikey:SB_KEY,"Content-Type":"application/json",Authorization:"Bearer "+(U?U.access_token:SB_KEY),...(o.headers||{})}});const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch(e){}
+if(!r.ok){const m=(j&&(j.msg||j.message||j.error_description||j.error))||"Request failed";if(/JWT/i.test(m)){U=null;saveU();render();throw new Error("Session expired. Please sign in again.")}throw new Error(m)}return j}
+function saveU(){try{U?localStorage.setItem("hapa-sess",JSON.stringify(U)):localStorage.removeItem("hapa-sess")}catch(e){}}
+const mapB=x=>{const la=+x.lat||-0.5004,ln=+x.lng||36.3254;return{id:x.id,real:1,n:E(x.name),c:x.category,r:"New",rc:0,d:0,o:openNow(x.open_h,x.close_h),x:Math.max(16,Math.min(344,180+(ln-36.3254)*1500)),y:Math.max(16,Math.min(204,110-(la+0.5004)*1500)),ph:String(x.phone).replace(/\D/g,""),lat:la,lng:ln,hrs:x.open_h+":00–"+x.close_h+":00 daily",svc:(x.services||[]).map(E),status:x.status,paid:x.paid_until?Date.parse(x.paid_until):0}};
+const mapD=x=>({id:x.id,b:x.business_id,t:E(x.title),p:x.price,pc:x.pct,left:x.qty,end:Date.parse(x.end_at)});
+async function loadAll(){if(!ON)return render();try{(await api("/rest/v1/businesses?status=eq.approved&select=*"))?.forEach(x=>{if(!B.some(b=>b.id==x.id))B.push(mapB(x))});
+(await api("/rest/v1/deals?end_at=gt."+encodeURIComponent(new Date().toISOString())+"&select=*"))?.forEach(x=>{if(!D.some(d=>d.id==x.id)&&bz(x.business_id))D.push(mapD(x))})}catch(e){}render()}
+async function loadMine(){const r=await api("/rest/v1/businesses?owner=eq."+U.id+"&select=*");MY=r[0]?mapB(r[0]):null;const p=await api("/rest/v1/payments?owner=eq."+U.id+"&order=created_at.desc&limit=1&select=*");PAY=p[0]||null}
+async function refresh(){try{await loadMine();await loadAll()}catch(e){alert(e.message)}}
+async function submitPay(){try{const c=val("p_c").trim().toUpperCase();if(!/^[A-Z0-9]{10}$/.test(c))return alert("Enter the 10-character M-Pesa code from your SMS.");const r=await api("/rest/v1/payments",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({mpesa_code:c,amount:FEE})});PAY=r[0];render()}catch(e){alert(/duplicate|unique/i.test(e.message)?"That M-Pesa code has already been used.":e.message)}}
+async function auth(mode){try{const e=val("a_e").trim(),p=val("a_p");if(!e||p.length<6)return alert("Enter your email and a password of 6+ characters.");
+const j=await api(mode=="signup"?"/auth/v1/signup":"/auth/v1/token?grant_type=password",{method:"POST",body:JSON.stringify({email:e,password:p})});
+if(!j.access_token)return alert("Account created. Check your email to confirm it, then sign in.");
+U={access_token:j.access_token,refresh_token:j.refresh_token,id:j.user.id};saveU();await loadMine();render()}catch(e){alert(e.message)}}
+function signOut(){U=null;MY=null;PAY=null;saveU();render()}
+function myLoc(){navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{PL={lat:p.coords.latitude,lng:p.coords.longitude};document.getElementById("pl").textContent="✅ Location saved";},()=>alert("Please allow location access while you are at your business.")):alert("Location not available.")}
+async function regBiz(){try{let ph=val("r_ph").replace(/\D/g,"");if(ph[0]=="0")ph="254"+ph.slice(1);else if(/^[17]/.test(ph))ph="254"+ph;
+if(!/^254\d{9}$/.test(ph))return alert("Enter a valid Kenyan phone number, e.g. 0712345678.");const n=val("r_n").trim();if(n.length<2)return alert("Enter your business name.");if(!PL)return alert("Tap 'Use my location' while at your business so customers can find you.");
+const r=await api("/rest/v1/businesses",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({name:n,category:val("r_c"),phone:ph,lat:PL.lat,lng:PL.lng,open_h:+val("r_o"),close_h:+val("r_x"),services:val("r_s").split(",").map(x=>x.trim()).filter(Boolean).slice(0,12)})});MY=mapB(r[0]);render()}catch(e){alert(e.message)}}
+async function publish(){try{const t=val("o_t").trim();if(!t||+val("o_p")<=0)return alert("Add an offer name and price.");
+const r=await api("/rest/v1/deals",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({business_id:MY.id,title:t,price:Math.round(+val("o_p")),pct:Math.min(90,Math.max(1,+val("o_d")||1)),qty:Math.max(1,+val("o_q")||1),end_at:new Date(now()+(+val("o_h")||1)*H).toISOString()})});D.unshift(mapD(r[0]));S.tab="home";S.cat="all";render();window.scrollTo(0,0)}catch(e){alert(e.message)}}
+function biz(){const w=h=>`<h1>Business</h1>${h}`;
+if(!ON)return w('<div class="card mu">Online sign-up is not connected yet. Add your Supabase URL and key at the top of the script in index.html (see README).</div>');
+if(!U)return w(`<div class="mu">List your business on HAPA for free.</div><div class="card"><label class="mu">Email</label><input id="a_e" type="email" autocomplete="email"><label class="mu">Password (6+ characters)</label><input id="a_p" type="password" autocomplete="current-password"><div class="grid" style="margin-top:12px"><button class="btn" onclick="auth('login')">Sign in</button><button class="btn alt" onclick="auth('signup')">Create account</button></div></div>`);
+const out=`<button class="chip" style="margin-top:16px" onclick="signOut()">Sign out</button>`;
+if(!MY)return w(`<div class="mu">Tell customers about your business. New listings are reviewed before they go live.</div><div class="card"><label class="mu">Business name</label><input id="r_n" maxlength="80"><label class="mu">Category</label><select id="r_c">${CATS.slice(1).map(c=>`<option value="${c[0]}">${c[1]} ${c[2]}</option>`).join("")}</select><label class="mu">WhatsApp / phone</label><input id="r_ph" type="tel" placeholder="0712345678"><div class="grid"><div><label class="mu">Opens (hour 0–23)</label><input id="r_o" type="number" value="8" min="0" max="23"></div><div><label class="mu">Closes (hour 1–24)</label><input id="r_x" type="number" value="19" min="1" max="24"></div></div><label class="mu">Services (separate with commas)</label><input id="r_s" placeholder="Haircut, Braids, Nails"><div class="grid" style="margin-top:12px"><button class="btn alt" onclick="myLoc()">📍 Use my location</button><button class="btn" onclick="regBiz()">Submit</button></div><div id="pl" class="mu" style="margin-top:6px">Stand at your business when you tap location.</div></div>${out}`);
+const live=MY.status=="approved"&&MY.paid>now();
+if(MY.status=="rejected")return w(`<div class="card"><b>${MY.n}</b><div class="mu" style="margin-top:6px">This listing was not approved. Contact HAPA support.</div></div>${out}`);
+if(!live){if(PAY&&PAY.status=="pending")return w(`<div class="card"><b>${MY.n}</b><div class="mu" style="margin-top:6px">⏳ Payment ${E(PAY.mpesa_code)} received. We are confirming it and will activate your listing shortly.</div></div><button class="chip" style="margin-top:12px" onclick="refresh()">Check again</button>${out}`);
+return w(`<div class="card"><b>${MY.n}</b><div class="mu" style="margin:6px 0">${MY.paid?"Your listing has expired. Renew":"Activate your listing"} for <b style="color:var(--tx)">KSh ${FEE}</b> per 30 days.</div>
+<ol class="mu" style="padding-left:18px;margin:8px 0"><li>Open M-Pesa → Send Money</li><li>Send <b>KSh ${FEE}</b> to <b>${PAY_NUM}</b></li><li>Type the confirmation code from the M-Pesa SMS below</li></ol>
+<button class="btn alt" onclick="navigator.clipboard&&navigator.clipboard.writeText('${PAY_NUM}');this.textContent='Copied ✓'">Copy number ${PAY_NUM}</button>
+<label class="mu" style="margin-top:10px;display:block">M-Pesa confirmation code</label><input id="p_c" maxlength="10" style="text-transform:uppercase" autocapitalize="characters" placeholder="e.g. SGH7K2L9QX">
+<button class="btn" style="width:100%;margin-top:12px" onclick="submitPay()">I HAVE PAID</button></div>${out}`)}
+const mine=D.filter(d=>d.b==MY.id&&d.end>now());
+return w(`<div class="mu">${MY.n} · ✅ Live until ${new Date(MY.paid).toLocaleDateString("en-GB")}</div><h2>Create offer</h2><div class="card"><div class="grid">
+<div><label class="mu">Offer</label><input id="o_t" value="" placeholder="e.g. Eyebrow shaping"></div><div><label class="mu">Normal price (KSh)</label><input id="o_p" type="number" value="500"></div>
+<div><label class="mu">Discount %</label><input id="o_d" type="number" value="25"></div><div><label class="mu">Available</label><input id="o_q" type="number" value="10"></div>
+<div style="grid-column:span 2"><label class="mu">Expires in (hours)</label><input id="o_h" type="number" value="4"></div></div>
+<button class="btn" style="width:100%;margin-top:12px" onclick="publish()">PUBLISH</button></div>
+<h2>Your live offers</h2>${mine.map(dealCard).join("")||'<div class="mu">None yet.</div>'}
+<h2>Plans</h2><div class="card mu"><b style="color:var(--tx)">Free</b> listing · <b style="color:var(--tx)">Boost</b> KSh 300/day · <b style="color:var(--tx)">Featured</b> KSh 1,000/wk · <b style="color:var(--tx)">Premium</b> KSh 2,500/mo</div>${out}`}
+function render(){document.getElementById("app").innerHTML=S.tab=="home"?home():S.tab=="map"?map():biz();
+document.getElementById("nav").innerHTML=[["home","🏠","Discover"],["map","🗺","Map"],["biz","🏪","Business"]].map(t=>`<button class="${S.tab==t[0]?'on':''}" onclick="S.tab='${t[0]}';render()"><span>${t[1]}</span>${t[2]}</button>`).join("")}
+function openB(id){const b=bz(id);S.stats.views+=id==S.my?1:0;const ds=D.filter(d=>d.b==id&&d.end>now());
+document.getElementById("sheet").innerHTML=`<div class="row"><h1>${CI(b.c)} ${b.n}</h1><button class="chip" onclick="closeM()">✕</button></div>
+<div class="mu">⭐ ${b.r}${b.rc?" ("+b.rc+" Google reviews)":""} · 📍 ${b.d} km · <span class="${b.o?'open':''}">${b.o?'🟢 Open now':'Closed'}</span></div>
+${b.hrs?`<div class="mu" style="margin-top:4px">🕗 ${b.hrs}</div>`:""}<h2>Today's offers</h2>${ds.map(dealCard).join("")||'<div class="mu">No offers today.</div>'}
+<h2>Services</h2>${b.svc.map(s=>`<div class="card">${s}</div>`).join("")}
+<div class="grid"><a class="btn" href="https://wa.me/${b.ph}" target="_blank" onclick="hit(${id},'wa')">WhatsApp</a><a class="btn alt" href="tel:+${b.ph}" onclick="hit(${id},'calls')">Call</a>
+<a class="btn alt" href="https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}" target="_blank" onclick="hit(${id},'dir')">Directions</a>
+<button class="btn alt" onclick="share(${id})">Share</button></div>`;document.getElementById("m").classList.add("show")}
+function closeM(){document.getElementById("m").classList.remove("show");render()}
+function hit(id,k){if(id==S.my)S.stats[k]++}
+function claim(id){const d=D.find(x=>x.id==id);if(!d||S.claimed[id]||!d.left)return;d.left--;S.claimed[id]=1;if(d.b==S.my)S.stats.claims++;
+if(document.getElementById("m").classList.contains("show"))openB(d.b);else render()}
+function gps(){if(!navigator.geolocation)return alert("Location not available on this device.");navigator.geolocation.getCurrentPosition(p=>{const R=6371,r=x=>x*Math.PI/180;B.forEach(b=>{const a=Math.sin(r(b.lat-p.coords.latitude)/2)**2+Math.cos(r(p.coords.latitude))*Math.cos(r(b.lat))*Math.sin(r(b.lng-p.coords.longitude)/2)**2;b.d=Math.round(2*R*Math.asin(Math.sqrt(a))*10)/10});render()},()=>alert("Couldn't get your location. Please allow location access."))}
+function surprise(){const ds=D.filter(d=>d.end>now()&&!S.claimed[d.id]);if(!ds.length)return;const d=ds[Math.floor(Math.random()*ds.length)],b=bz(d.b);
+document.getElementById("sheet").innerHTML=`<div class="row"><h1>🎲 We found something for you</h1><button class="chip" onclick="closeM()">✕</button></div>${dealCard(d)}<div class="grid"><button class="btn alt" onclick="surprise()">Again</button><button class="btn" onclick="openB(${b.id})">See ${b.n.split(" ")[0]}</button></div>`;document.getElementById("m").classList.add("show")}
+function share(id){const b=bz(id),t=`Check out ${b.n} on HAPA`;try{navigator.share?navigator.share({title:"HAPA",text:t}):alert(t)}catch(e){}}
+function theme(){const dk=document.documentElement.dataset.theme=="dark"||(!document.documentElement.dataset.theme&&matchMedia("(prefers-color-scheme:dark)").matches);document.documentElement.dataset.theme=dk?"light":"dark";try{localStorage.setItem("hapa-theme",dk?"light":"dark")}catch(e){}}
+try{const t=localStorage.getItem("hapa-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}
+document.getElementById("m").addEventListener("click",e=>{if(e.target.id=="m")closeM()});
+render();
+(async()=>{if(ON){try{const x=JSON.parse(localStorage.getItem("hapa-sess")||"null");if(x&&x.refresh_token){const r=await fetch(SB_URL+"/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{apikey:SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:x.refresh_token})});if(r.ok){const j=await r.json();U={access_token:j.access_token,refresh_token:j.refresh_token,id:j.user.id};saveU();await loadMine()}}}catch(e){}}await loadAll()})();
+if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+</script></body></html>
